@@ -106,172 +106,269 @@ guiViewSettings.add(viewSettings, "toggleFillerCells");
 guiViewSettings.add(viewSettings, "toggleTopCellGeometry");
 
 
-const gltf_loader = new GLTFLoader();
-gltf_loader.load(
-    GLTF_URL,
-    // called when the resource is loaded
-    function (gltf) {
+console.log("ready")
 
-        scene.add(gltf.scene);
+document.getElementById("filepicker").onchange = function (e) { 
+    // getting a hold of the file reference
+    var file = e.target.files[0];
 
-        gltf.scene.rotation.x = -Math.PI / 2;
-        gltf.animations; // Array<THREE.AnimationClip>
-        gltf.scene; // THREE.Group
-        gltf.scenes; // Array<THREE.Group>
-        gltf.cameras; // Array<THREE.Camera>
-        gltf.asset; // Object
+    // setting up the reader
+    var reader = new FileReader();
+    reader.readAsText(file,'UTF-8');
 
-        let cell_stats = [];
-        for (var i = 0; i < scene.children.length; i++) {
-            for (var j = 0; j < scene.children[i].children.length; j++) {
-                for (var k = 0; k < scene.children[i].children[j].children.length; k++) {
-                    var node = scene.children[i].children[j].children[k];
-                    if (node instanceof THREE.Object3D) {
-                        // console.log(node.userData["type"]);
-                        const cell_type = node.userData["type"];
+    // here we tell the reader what to do when it's done reading...
+    reader.onload = function (readerEvent) {
+        var content = readerEvent.target.result; // this is the content!
+        console.log("Loading file");
+        document.getElementById("uploadfile").remove();
+        do_load(content)
+    }
+}
 
-                        if(cell_type==undefined) {
-                            continue;
+
+
+
+
+
+
+
+function do_load(gltf_data) {
+    const gltf_loader = new GLTFLoader();
+    gltf_loader.parse(
+        gltf_data,
+        "/",
+        // called when the resource is loaded
+        function (gltf) {
+
+            scene.add(gltf.scene);
+
+            gltf.scene.rotation.x = -Math.PI / 2;
+            gltf.animations; // Array<THREE.AnimationClip>
+            gltf.scene; // THREE.Group
+            gltf.scenes; // Array<THREE.Group>
+            gltf.cameras; // Array<THREE.Camera>
+            gltf.asset; // Object
+
+            let cell_stats = [];
+            for (var i = 0; i < scene.children.length; i++) {
+                for (var j = 0; j < scene.children[i].children.length; j++) {
+                    for (var k = 0; k < scene.children[i].children[j].children.length; k++) {
+                        var node = scene.children[i].children[j].children[k];
+                        if (node instanceof THREE.Object3D) {
+                            // console.log(node.userData["type"]);
+                            const cell_type = node.userData["type"];
+
+                            if(cell_type==undefined) {
+                                continue;
+                            }
+                            if (cell_stats[cell_type] == undefined) {
+                                cell_stats[cell_type] = 0;
+                            }
+                            cell_stats[cell_type]++;
                         }
-                        if (cell_stats[cell_type] == undefined) {
-                            cell_stats[cell_type] = 0;
-                        }
-                        cell_stats[cell_type]++;
+
                     }
 
                 }
 
+                // console.log(viewSettings.materials);
+                // console.log(viewSettings.materials_visibility);
             }
 
-            // console.log(viewSettings.materials);
-            // console.log(viewSettings.materials_visibility);
-        }
+            // showCell = function(c) {
 
-        // showCell = function(c) {
-
-        // };
-
-        var cell_stats_actions = {};
-
-        for (var cell_name in cell_stats) {
-            // guiStatsFolder.add(cell_stats, cell_name);
-            // console.log(cell_name);
-            let c = cell_name;
-            // cell_stats_actions[c] = function() {
-            //     console.log(c);
             // };
 
-            // let folder = guiStatsFolder.addFolder(cell_name);
-            // folder.add(cell_stats_actions, c);
-            let controller = guiStatsFolder.add(cell_stats, cell_name);
-            controller.domElement.onmouseover = function (event) {
-                event.stopPropagation();
-                actionHighlightCellType(c);
-            }
-            controller.domElement.onmouseout = function (event) {
-                turnOffHighlight();
+            var cell_stats_actions = {};
+
+            for (var cell_name in cell_stats) {
+                // guiStatsFolder.add(cell_stats, cell_name);
+                // console.log(cell_name);
+                let c = cell_name;
+                // cell_stats_actions[c] = function() {
+                //     console.log(c);
+                // };
+
+                // let folder = guiStatsFolder.addFolder(cell_name);
+                // folder.add(cell_stats_actions, c);
+                let controller = guiStatsFolder.add(cell_stats, cell_name);
+                controller.domElement.onmouseover = function (event) {
+                    event.stopPropagation();
+                    actionHighlightCellType(c);
+                }
+                controller.domElement.onmouseout = function (event) {
+                    turnOffHighlight();
+                }
+
             }
 
+
+            scene.traverse(function (object) {
+                if (object.material) {
+                    if (viewSettings.materials[object.material.name] == undefined) {
+                        viewSettings.materials[object.material.name] = object.material;
+                        viewSettings.materials_visibility[object.material.name] = true;
+                        // console.log(object.material.name);
+                        guiViewSettings.add(viewSettings.materials_visibility, object.material.name).onChange(function (new_value) {
+                            viewSettings.materials[this._name].visible = new_value;// viewSettings.materials_visibility[node.material.name];
+                        });
+                    }
+                }
+            })
+
+            // TEXT TEST
+            // const geometry = new TextGeometry('TinyTapeout', {
+            //     font: mainFont,
+            //     size: 1.2,
+            //     height: 0.1,
+            //     curveSegments: 12,
+            //     bevelEnabled: false,
+            //     bevelThickness: 0.1,
+            //     bevelSize: 0.1,
+            //     bevelOffset: 0,
+            //     bevelSegments: 5
+            // });
+            // const textMesh = new THREE.Mesh(geometry);
+            // textMesh.rotation.x = -Math.PI / 2;
+            // scene.children[0].add(textMesh);
+
+        },
+        // called while loading is progressing
+        //function (xhr) {
+        //    console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        //},
+        // called when loading has errors
+        function (error) {
+            console.log('An error happened');
         }
+    );
 
 
-        scene.traverse(function (object) {
-            if (object.material) {
-                if (viewSettings.materials[object.material.name] == undefined) {
-                    viewSettings.materials[object.material.name] = object.material;
-                    viewSettings.materials_visibility[object.material.name] = true;
-                    // console.log(object.material.name);
-                    guiViewSettings.add(viewSettings.materials_visibility, object.material.name).onChange(function (new_value) {
-                        viewSettings.materials[this._name].visible = new_value;// viewSettings.materials_visibility[node.material.name];
-                    });
+    const highlightMaterial = new THREE.MeshBasicMaterial({ color: 0x50f050 });
+    highlightMaterial.name = "HIGHLIGHT";
+    var previousMaterials = null;
+    var highlightedObjects = null;
+
+    var cellDetailMode = false;
+
+    window.onmousedown = function (event) {
+        // if (event.buttons != 0 || cellDetailMode)
+            // return;
+        if (cellDetailMode)
+            return;
+
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+
+        var intersects = raycaster.intersectObject(scene, true);
+
+        turnOffHighlight();
+
+
+        if (intersects.length > 0) {
+            for (var i = 0; i < intersects.length; i++) {
+                var object = intersects[i].object;
+                if (object.parent.parent.name != "" && object.parent.visible) {
+                    informationDiv.innerHTML = ("Mouse over: " + object.parent.name + " (" + object.parent.userData["type"] + ")");
+
+                    
+                    if (highlightedObjects == null) {
+                        highlightedObjects = [];
+                        previousMaterials = [];
+                    }
+
+                    let node = object.parent;
+          
+                    for (var mesh_idx = 0; mesh_idx < node.children.length; mesh_idx++) {
+                        let obj = node.children[mesh_idx];
+                        if(obj instanceof THREE.Mesh) {
+                            
+                            if (highlightedObjects.indexOf(obj) == -1) {
+                                previousMaterials.push(obj.material);
+                                highlightedObjects.push(obj);
+                                obj.material = highlightMaterial;
+                                
+                                
+                            }
+                        }
+                    }
+
+                    
+
                 }
+                // object.material.color.set(Math.random() * 0xffffff);
             }
-        })
-
-        // TEXT TEST
-        // const geometry = new TextGeometry('TinyTapeout', {
-        //     font: mainFont,
-        //     size: 1.2,
-        //     height: 0.1,
-        //     curveSegments: 12,
-        //     bevelEnabled: false,
-        //     bevelThickness: 0.1,
-        //     bevelSize: 0.1,
-        //     bevelOffset: 0,
-        //     bevelSegments: 5
-        // });
-        // const textMesh = new THREE.Mesh(geometry);
-        // textMesh.rotation.x = -Math.PI / 2;
-        // scene.children[0].add(textMesh);
-
-    },
-    // called while loading is progressing
-    function (xhr) {
-        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-    },
-    // called when loading has errors
-    function (error) {
-        console.log('An error happened');
+        }
     }
-);
 
 
-const highlightMaterial = new THREE.MeshBasicMaterial({ color: 0x50f050 });
-highlightMaterial.name = "HIGHLIGHT";
-var previousMaterials = null;
-var highlightedObjects = null;
-
-var cellDetailMode = false;
-
-window.onmousedown = function (event) {
-    // if (event.buttons != 0 || cellDetailMode)
-        // return;
-    if (cellDetailMode)
-        return;
-
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    raycaster.setFromCamera(mouse, camera);
-
-    var intersects = raycaster.intersectObject(scene, true);
-
-    turnOffHighlight();
+    window.onkeypress = function (event) {
+        // console.log(event.key);
+        if (event.key == "1") {
+            actionToggleFillerCellsVisibility();
 
 
-    if (intersects.length > 0) {
-        for (var i = 0; i < intersects.length; i++) {
-            var object = intersects[i].object;
-            if (object.parent.parent.name != "" && object.parent.visible) {
-                informationDiv.innerHTML = ("Mouse over: " + object.parent.name + " (" + object.parent.userData["type"] + ")");
-
-                
-                if (highlightedObjects == null) {
-                    highlightedObjects = [];
-                    previousMaterials = [];
-                }
-
-                let node = object.parent;
-      
-                for (var mesh_idx = 0; mesh_idx < node.children.length; mesh_idx++) {
-                    let obj = node.children[mesh_idx];
-                    if(obj instanceof THREE.Mesh) {
-                        
-                        if (highlightedObjects.indexOf(obj) == -1) {
-                            previousMaterials.push(obj.material);
-                            highlightedObjects.push(obj);
-                            obj.material = highlightMaterial;
-                            
-                            
+        } else if (event.key == "2") {
+            actionToggleTopCelGeometryVisibility();
+        } else if (event.key == "3") {
+            if (!cellDetailMode && highlightedObjects != null) {
+                cellDetailMode = true;
+                // console.log(highlightedObject.parent);
+                for (var i = 0; i < scene.children.length; i++) {
+                    for (var j = 0; j < scene.children[i].children.length; j++) {
+                        for (var k = 0; k < scene.children[i].children[j].children.length; k++) {
+                            var node = scene.children[i].children[j].children[k];
+                            if (node instanceof THREE.Object3D && node != highlightedObjects[0].parent) {
+                                node.visible = false;
+                            }
                         }
                     }
                 }
 
-                
 
+
+                controls.saveState();
+
+                var viewCenter =  new THREE.Vector3;
+                const bbox = new THREE.BoxHelper( highlightedObjects[0].parent, 0xffff00 );
+                bbox.geometry.computeBoundingBox();
+                bbox.geometry.boundingBox.getCenter(viewCenter);
+                //scene.add(box);
+                turnOffHighlight();
+
+                camera.position.x = viewCenter.x;
+                camera.position.y = 20;;
+                camera.position.z = viewCenter.z;
+
+                camera.up.x = 0;
+                camera.up.y = 0;
+                camera.up.z = -1;
+                controls.target.set(viewCenter.x, 0, viewCenter.z);
+                controls.update();
+
+            } else {
+                cellDetailMode = false;
+
+                for (var i = 0; i < scene.children.length; i++) {
+                    for (var j = 0; j < scene.children[i].children.length; j++) {
+                        for (var k = 0; k < scene.children[i].children[j].children.length; k++) {
+                            var node = scene.children[i].children[j].children[k];
+                            if (node instanceof THREE.Object3D) {
+                                node.visible = true;
+                            }
+                        }
+                    }
+                }
+                controls.reset();
+                // camera.position.set(prevCameraPos);                    
+                // // camera.up.set(prevCameraUp);
+                // controls.target.set(prevControlTarget);
+                controls.update();
             }
-            // object.material.color.set(Math.random() * 0xffffff);
         }
-    }
+    };
+
 }
 
 function turnOffHighlight() {
@@ -357,69 +454,3 @@ function actionHighlightCellType(cell_type) {
 
 }
 
-
-window.onkeypress = function (event) {
-    // console.log(event.key);
-    if (event.key == "1") {
-        actionToggleFillerCellsVisibility();
-
-
-    } else if (event.key == "2") {
-        actionToggleTopCelGeometryVisibility();
-    } else if (event.key == "3") {
-        if (!cellDetailMode && highlightedObjects != null) {
-            cellDetailMode = true;
-            // console.log(highlightedObject.parent);
-            for (var i = 0; i < scene.children.length; i++) {
-                for (var j = 0; j < scene.children[i].children.length; j++) {
-                    for (var k = 0; k < scene.children[i].children[j].children.length; k++) {
-                        var node = scene.children[i].children[j].children[k];
-                        if (node instanceof THREE.Object3D && node != highlightedObjects[0].parent) {
-                            node.visible = false;
-                        }
-                    }
-                }
-            }
-
-
-
-            controls.saveState();
-
-            var viewCenter =  new THREE.Vector3;
-            const bbox = new THREE.BoxHelper( highlightedObjects[0].parent, 0xffff00 );
-            bbox.geometry.computeBoundingBox();
-            bbox.geometry.boundingBox.getCenter(viewCenter);
-            //scene.add(box);
-            turnOffHighlight();
-
-            camera.position.x = viewCenter.x;
-            camera.position.y = 20;;
-            camera.position.z = viewCenter.z;
-
-            camera.up.x = 0;
-            camera.up.y = 0;
-            camera.up.z = -1;
-            controls.target.set(viewCenter.x, 0, viewCenter.z);
-            controls.update();
-
-        } else {
-            cellDetailMode = false;
-
-            for (var i = 0; i < scene.children.length; i++) {
-                for (var j = 0; j < scene.children[i].children.length; j++) {
-                    for (var k = 0; k < scene.children[i].children[j].children.length; k++) {
-                        var node = scene.children[i].children[j].children[k];
-                        if (node instanceof THREE.Object3D) {
-                            node.visible = true;
-                        }
-                    }
-                }
-            }
-            controls.reset();
-            // camera.position.set(prevCameraPos);                    
-            // // camera.up.set(prevCameraUp);
-            // controls.target.set(prevControlTarget);
-            controls.update();
-        }
-    }
-};
